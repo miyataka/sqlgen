@@ -6,19 +6,25 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/miyataka/sqlgen"
 )
 
 var (
-	dsn string
+	dsn  string
+	sqlc bool
 )
 
 func main() {
 	rootCmd.Flags().StringVarP(&dsn, "dsn", "d", "", "DSN e.g. postgres://user:password@localhost:5432/test")
+	rootCmd.Flags().BoolVar(&sqlc, "sqlc", false, "generate comment for sqlc")
 	err := rootCmd.MarkFlagRequired("dsn")
 	if err != nil {
 		log.Fatal(err)
@@ -34,7 +40,6 @@ var rootCmd = &cobra.Command{
 	Use:   "psqlgen",
 	Short: "psqlgen is a sql generator",
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO flag for sqlc
 		ctx := cmd.Context()
 		parsed, err := sqlgen.ParseDSN(dsn)
 		if err != nil {
@@ -57,7 +62,15 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		for _, stmt := range insertStmts {
-			fmt.Println(stmt)
+			str := ""
+			if sqlc {
+				str += fmt.Sprintf("%s\n", genComment4Sqlc(stmt))
+			}
+			str += stmt + "\n"
+			if sqlc {
+				str += "\n"
+			}
+			fmt.Print(str)
 		}
 	},
 }
@@ -107,4 +120,46 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string
 		return nil, err
 	}
 	return insertStatements, nil
+}
+
+func genComment4Sqlc(stmt string) string {
+	tn, err := getTableName(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return fmt.Sprintf("-- Create%s :one", SnakeToPascal(tn))
+}
+
+// GetTableName extracts the table name from an INSERT SQL statement.
+func getTableName(sql string) (string, error) {
+	// Normalize and trim the SQL statement
+	sql = strings.TrimSpace(sql)
+	sql = strings.ToUpper(sql)
+
+	// Regular expression to match the table name after "INSERT INTO"
+	re := regexp.MustCompile(`(?i)INSERT\s+INTO\s+([^\s\(\)]+)`)
+	match := re.FindStringSubmatch(sql)
+	if len(match) < 2 {
+		return "", fmt.Errorf("failed to extract table name from SQL: %s", sql)
+	}
+
+	// Return the table name (case-insensitive matching)
+	return strings.ToLower(match[1]), nil
+}
+
+// SnakeToPascal converts a snake_case string to PascalCase using golang.org/x/text/cases
+func SnakeToPascal(input string) string {
+	// Split the string by underscores
+	words := strings.Split(input, "_")
+
+	// Create a Title casing transformer
+	caser := cases.Title(language.Und) // "Und" is for undetermined language
+
+	// Capitalize the first letter of each word
+	for i, word := range words {
+		words[i] = caser.String(word)
+	}
+
+	// Join the words together to form PascalCase
+	return strings.Join(words, "")
 }
