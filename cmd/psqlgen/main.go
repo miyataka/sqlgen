@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/miyataka/sqlgen"
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ var rootCmd = &cobra.Command{
 	Short: "psqlgen is a sql generator",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
-		parsed, err := sqlgen.ParseDSN(dsn)
+		database, err := getDatabaseFromDsn(dsn)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -45,11 +46,6 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer db.Close()
-
-		database, ok := parsed["database"]
-		if !ok {
-			log.Fatal("database is required")
-		}
 
 		// execute query
 		insertStmts, err := getInsertsStmts(ctx, db, database)
@@ -123,4 +119,13 @@ func genComment4Sqlc(stmt string) string {
 		log.Fatal(err)
 	}
 	return fmt.Sprintf("-- Create%s :one", sqlgen.SnakeToPascal(tn))
+}
+
+// getDatabaseFromDsn parses a DSN string and returns the database name.
+func getDatabaseFromDsn(dsn string) (string, error) {
+	parsed, err := pgconn.ParseConfig(dsn)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse DSN: %w", err)
+	}
+	return parsed.Database, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/miyataka/sqlgen"
 	"github.com/spf13/cobra"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 	Short: "mysqlgen is a sql generator",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
-		dsn, dbname, err := sqlgen.ParseMysqlDSN(dsn)
+		dbname, err := getDatabaseFromDsn(dsn)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -120,4 +120,12 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string
 		return nil, err
 	}
 	return insertStatements, nil
+}
+
+func getDatabaseFromDsn(dsn string) (string, error) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse DSN: %w", err)
+	}
+	return cfg.DBName, nil
 }
