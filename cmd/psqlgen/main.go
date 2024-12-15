@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -51,22 +52,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		// execute query
-		// TODO refactor
-		rows, err := db.QueryContext(ctx, generatePostgresInserts, database)
+		insertStmts, err := getInsertsStmts(ctx, db, database)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var insertStatement string
-			if err := rows.Scan(&insertStatement); err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println(insertStatement)
-		}
-		if err := rows.Err(); err != nil {
-			log.Fatal(err)
+		for _, stmt := range insertStmts {
+			fmt.Println(stmt)
 		}
 	},
 }
@@ -96,3 +87,24 @@ GROUP BY
 ORDER BY
     table_name;
 `
+
+func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, generatePostgresInserts, database)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var insertStatements []string
+	for rows.Next() {
+		var insertStatement string
+		if err := rows.Scan(&insertStatement); err != nil {
+			return nil, err
+		}
+		insertStatements = append(insertStatements, insertStatement)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return insertStatements, nil
+}
