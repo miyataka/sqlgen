@@ -55,7 +55,23 @@ var rootCmd = &cobra.Command{
 		for _, stmt := range insertStmts {
 			str := ""
 			if sqlc {
-				str += fmt.Sprintf("%s\n", genComment4Sqlc(stmt))
+				str += fmt.Sprintf("%s\n", genComment4Sqlc(stmt, "create"))
+			}
+			str += stmt + "\n"
+			if sqlc {
+				str += "\n"
+			}
+			fmt.Print(str)
+		}
+
+		selectStmts, err := getSelectsStmts(ctx, db, dbname)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, stmt := range selectStmts {
+			str := ""
+			if sqlc {
+				str += fmt.Sprintf("%s\n", genComment4Sqlc(stmt, "read"))
 			}
 			str += stmt + "\n"
 			if sqlc {
@@ -66,12 +82,20 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func genComment4Sqlc(stmt string) string {
+func genComment4Sqlc(stmt string, action string) string {
 	tn, err := sqlgen.GetTableName(stmt)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return fmt.Sprintf("-- Create%s :exec", sqlgen.SnakeToPascal(tn))
+	tableName := sqlgen.SnakeToPascal(sqlgen.Singularize(tn))
+	switch action {
+	case "create":
+		return fmt.Sprintf("-- name: Create%s :exec", tableName)
+	case "read":
+		return fmt.Sprintf("-- name: Get%sByPk :one", tableName)
+	default:
+		panic("invalid action")
+	}
 }
 
 const generateMysqlInserts = `
@@ -120,6 +144,62 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string
 		return nil, err
 	}
 	return insertStatements, nil
+}
+
+const generateMysqlSelects = `
+SELECT
+    CONCAT(
+        'SELECT ', GROUP_CONCAT(column_name ORDER BY ordinal_position SEPARATOR ', '),
+        ' FROM ', table_name,
+        ' WHERE ', GROUP_CONCAT(
+            CONCAT(pk_column, ' = ?') ORDER BY pk_ordinal_position SEPARATOR ' AND '
+        ), ';'
+    ) AS select_statement
+FROM (
+    SELECT
+        c.TABLE_SCHEMA AS table_schema,
+        c.TABLE_NAME AS table_name,
+        c.COLUMN_NAME AS column_name,
+        c.ORDINAL_POSITION AS ordinal_position,
+        kcu.COLUMN_NAME AS pk_column,
+        kcu.ORDINAL_POSITION AS pk_ordinal_position
+    FROM
+        INFORMATION_SCHEMA.COLUMNS c
+    LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+        ON c.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+        AND c.TABLE_NAME = kcu.TABLE_NAME
+        AND c.COLUMN_NAME = kcu.COLUMN_NAME
+        AND kcu.CONSTRAINT_NAME = 'PRIMARY'
+    WHERE
+        c.TABLE_SCHEMA = ? -- schema/database name
+    ORDER BY
+        c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION
+) subquery
+GROUP BY
+    table_schema, table_name
+ORDER BY
+    table_name;
+`
+
+func getSelectsStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, generateMysqlSelects, database)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var selectStatements []string
+	for rows.Next() {
+		var selectStatement string
+		if err := rows.Scan(&selectStatement); err != nil {
+			return nil, err
+		}
+		selectStatements = append(selectStatements, selectStatement)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return selectStatements, nil
 }
 
 func getDatabaseFromDsn(dsn string) (string, error) {
