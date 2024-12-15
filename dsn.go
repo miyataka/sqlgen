@@ -3,6 +3,7 @@ package sqlgen
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -77,4 +78,21 @@ func SnakeToPascal(input string) string {
 
 	// Join the words together to form PascalCase
 	return strings.Join(words, "")
+}
+
+// GetTableName extracts the table name from an INSERT SQL statement.
+func GetTableName(sql string) (string, error) {
+	// Normalize and trim the SQL statement
+	sql = strings.TrimSpace(sql)
+	sql = strings.ToUpper(sql)
+
+	// Regular expression to match the table name after "INSERT INTO"
+	re := regexp.MustCompile(`(?i)INSERT\s+INTO\s+([^\s\(\)]+)`)
+	match := re.FindStringSubmatch(sql)
+	if len(match) < 2 {
+		return "", fmt.Errorf("failed to extract table name from SQL: %s", sql)
+	}
+
+	// Return the table name (case-insensitive matching)
+	return strings.ToLower(match[1]), nil
 }

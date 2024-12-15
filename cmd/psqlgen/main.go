@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
-	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/miyataka/sqlgen"
@@ -120,26 +118,9 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string
 }
 
 func genComment4Sqlc(stmt string) string {
-	tn, err := getTableName(stmt)
+	tn, err := sqlgen.GetTableName(stmt)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return fmt.Sprintf("-- Create%s :one", sqlgen.SnakeToPascal(tn))
-}
-
-// GetTableName extracts the table name from an INSERT SQL statement.
-func getTableName(sql string) (string, error) {
-	// Normalize and trim the SQL statement
-	sql = strings.TrimSpace(sql)
-	sql = strings.ToUpper(sql)
-
-	// Regular expression to match the table name after "INSERT INTO"
-	re := regexp.MustCompile(`(?i)INSERT\s+INTO\s+([^\s\(\)]+)`)
-	match := re.FindStringSubmatch(sql)
-	if len(match) < 2 {
-		return "", fmt.Errorf("failed to extract table name from SQL: %s", sql)
-	}
-
-	// Return the table name (case-insensitive matching)
-	return strings.ToLower(match[1]), nil
 }
