@@ -87,7 +87,7 @@ func genComment4Sqlc(stmt string, action string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tableName := sqlgen.SnakeToPascal(tn)
+	tableName := sqlgen.SnakeToPascal(sqlgen.Singularize(tn))
 	switch action {
 	case "create":
 		return fmt.Sprintf("-- name: Create%s :exec", tableName)

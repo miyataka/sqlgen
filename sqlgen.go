@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jinzhu/inflection"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -47,4 +48,8 @@ func GetTableName(sql string) (string, error) {
 
 	// Return the table name
 	return strings.ToLower(match2[1]), nil
+}
+
+func Singularize(str string) string {
+	return inflection.Singular(str)
 }
