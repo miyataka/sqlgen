@@ -25,7 +25,7 @@ After installing SQLGen, you can use it from the command line. Here are some exa
 
 ```sh
 # Generate SQL queries for PostgreSQL
-psqlgen --dsn= "postgres://user:password@localhost:5432/dbname"
+psqlgen --dsn="postgres://user:password@localhost:5432/dbname"
 
 # Generate SQL queries for MySQL
 mysqlgen --dsn= "user:password@tcp(localhost:3306)/dbname"
@@ -35,7 +35,7 @@ When using with sqlc, you can generate comment for sqlc with just `--sqlc` flag:
 
 ```sh
 # Generate SQL queries for PostgreSQL with comments for sqlc
-psqlgen --dsn= "postgres://user:password@localhost:5432/dbname" --sqlc
+psqlgen --dsn="postgres://user:password@localhost:5432/dbname" --sqlc
 
 # Generate SQL queries for MySQL with comments for sqlc
 mysqlgen --dsn= "user:password@tcp(localhost:3306)/dbname" --sqlc
