@@ -1,4 +1,5 @@
 # SQLGen
+[![Go Reference](https://pkg.go.dev/badge/github.com/miyataka/sqlgen.svg)](https://pkg.go.dev/github.com/miyataka/sqlgen)
 
 SQLGen is a command-line tool written in Go that helps you generate SQL queries efficiently.
 
