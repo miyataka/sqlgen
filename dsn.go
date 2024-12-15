@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // ParseDSN parses a DSN string and returns its components.
@@ -58,4 +60,21 @@ func ParseMysqlDSN(dsn string) (parsedDSN string, dbname string, err error) {
 		return "", "", fmt.Errorf("failed to parse DSN: %w", err)
 	}
 	return cfg.FormatDSN(), cfg.DBName, nil
+}
+
+// SnakeToPascal converts a snake_case string to PascalCase using golang.org/x/text/cases
+func SnakeToPascal(input string) string {
+	// Split the string by underscores
+	words := strings.Split(input, "_")
+
+	// Create a Title casing transformer
+	caser := cases.Title(language.Und) // "Und" is for undetermined language
+
+	// Capitalize the first letter of each word
+	for i, word := range words {
+		words[i] = caser.String(word)
+	}
+
+	// Join the words together to form PascalCase
+	return strings.Join(words, "")
 }

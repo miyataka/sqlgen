@@ -9,12 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/miyataka/sqlgen"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -127,7 +124,7 @@ func genComment4Sqlc(stmt string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return fmt.Sprintf("-- Create%s :one", SnakeToPascal(tn))
+	return fmt.Sprintf("-- Create%s :one", sqlgen.SnakeToPascal(tn))
 }
 
 // GetTableName extracts the table name from an INSERT SQL statement.
@@ -145,21 +142,4 @@ func getTableName(sql string) (string, error) {
 
 	// Return the table name (case-insensitive matching)
 	return strings.ToLower(match[1]), nil
-}
-
-// SnakeToPascal converts a snake_case string to PascalCase using golang.org/x/text/cases
-func SnakeToPascal(input string) string {
-	// Split the string by underscores
-	words := strings.Split(input, "_")
-
-	// Create a Title casing transformer
-	caser := cases.Title(language.Und) // "Und" is for undetermined language
-
-	// Capitalize the first letter of each word
-	for i, word := range words {
-		words[i] = caser.String(word)
-	}
-
-	// Join the words together to form PascalCase
-	return strings.Join(words, "")
 }
