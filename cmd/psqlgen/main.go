@@ -12,7 +12,17 @@ import (
 	"github.com/miyataka/sqlgen"
 )
 
+var (
+	dsn string
+)
+
 func main() {
+	rootCmd.Flags().StringVarP(&dsn, "dsn", "d", "", "DSN e.g. postgres://user:password@localhost:5432/test")
+	err := rootCmd.MarkFlagRequired("dsn")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -24,7 +34,6 @@ var rootCmd = &cobra.Command{
 	Short: "psqlgen is a sql generator",
 	Run: func(cmd *cobra.Command, args []string) {
 		// TODO flag for sqlc
-		dsn := "postgres://localhost:5432/test" // TODO dsn from flag
 		ctx := cmd.Context()
 		parsed, err := sqlgen.ParseDSN(dsn)
 		if err != nil {
@@ -42,6 +51,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// execute query
+		// TODO refactor
 		rows, err := db.QueryContext(ctx, generatePostgresInserts, database)
 		if err != nil {
 			log.Fatal(err)
