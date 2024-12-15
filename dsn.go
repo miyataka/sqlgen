@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 // ParseDSN parses a DSN string and returns its components.
@@ -48,4 +50,12 @@ func ParseDSN(dsn string) (map[string]string, error) {
 	}
 
 	return parsedDSN, nil
+}
+
+func ParseMysqlDSN(dsn string) (parsedDSN string, dbname string, err error) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse DSN: %w", err)
+	}
+	return cfg.FormatDSN(), cfg.DBName, nil
 }
