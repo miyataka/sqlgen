@@ -35,10 +35,16 @@ func GetTableName(sql string) (string, error) {
 	// Regular expression to match the table name after "INSERT INTO"
 	re := regexp.MustCompile(`(?i)INSERT\s+INTO\s+([^\s\(\)]+)`)
 	match := re.FindStringSubmatch(sql)
-	if len(match) < 2 {
+	if len(match) == 2 {
+		return strings.ToLower(match[1]), nil
+	}
+
+	re2 := regexp.MustCompile(`FROM\s+([^\s\(\)]+)`)
+	match2 := re2.FindStringSubmatch(sql)
+	if len(match2) < 2 {
 		return "", fmt.Errorf("failed to extract table name from SQL: %s", sql)
 	}
 
 	// Return the table name
-	return strings.ToLower(match[1]), nil
+	return strings.ToLower(match2[1]), nil
 }
