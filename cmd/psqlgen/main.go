@@ -206,9 +206,9 @@ func genComment4Sqlc(stmt string, action string) string {
 	tableName := sqlgen.SnakeToPascal(tn)
 	switch action {
 	case "create":
-		return fmt.Sprintf("-- Create%s :one", tableName)
+		return fmt.Sprintf("-- name: Create%s :one", tableName)
 	case "read":
-		return fmt.Sprintf("-- Get%sByPk :one", tableName)
+		return fmt.Sprintf("-- name: Get%sByPk :one", tableName)
 	default:
 		panic("invalid action")
 	}
