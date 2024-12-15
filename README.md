@@ -31,7 +31,7 @@ psqlgen --dsn= "postgres://user:password@localhost:5432/dbname"
 mysqlgen --dsn= "user:password@tcp(localhost:3306)/dbname"
 ```
 
-When using with sqlc, you can generate SQL queries from the schema file:
+When using with sqlc, you can generate comment for sqlc with just `--sqlc` flag:
 
 ```sh
 # Generate SQL queries for PostgreSQL with comments for sqlc
