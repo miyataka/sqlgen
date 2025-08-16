@@ -94,7 +94,7 @@ func TestBuildSkipTablesCondition(t *testing.T) {
 				placeholders[i] = "?"
 			}
 			result := "AND c.TABLE_NAME NOT IN (" + strings.Join(placeholders, ", ") + ")"
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}

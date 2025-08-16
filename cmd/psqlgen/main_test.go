@@ -98,7 +98,7 @@ func TestBuildSkipTablesCondition(t *testing.T) {
 				placeholders[i] = strings.TrimSpace(strings.Split(strings.TrimPrefix("$2, $3, $4", "$"), ", ")[i])
 				placeholders[i] = "$" + placeholders[i]
 			}
-			
+
 			// This is a simplified test - in practice we'd test the actual function
 			// but since the logic is embedded in the main functions, we're testing the concept
 		})
