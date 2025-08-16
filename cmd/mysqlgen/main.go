@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/miyataka/sqlgen"
 	"github.com/spf13/cobra"
@@ -14,13 +15,15 @@ import (
 )
 
 var (
-	dsn  string
-	sqlc bool
+	dsn        string
+	sqlc       bool
+	skipTables string
 )
 
 func main() {
 	rootCmd.Flags().StringVarP(&dsn, "dsn", "d", "", "DSN e.g. user:password@tcp(localhost:5432)/test")
 	rootCmd.Flags().BoolVar(&sqlc, "sqlc", false, "generate comment for sqlc")
+	rootCmd.Flags().StringVar(&skipTables, "skip-tables", "", "comma-separated list of tables to skip")
 	err := rootCmd.MarkFlagRequired("dsn")
 	if err != nil {
 		log.Fatal(err)
@@ -47,8 +50,17 @@ var rootCmd = &cobra.Command{
 		}
 		defer db.Close()
 
+		// Parse skip tables
+		var skipTablesList []string
+		if skipTables != "" {
+			skipTablesList = strings.Split(skipTables, ",")
+			for i := range skipTablesList {
+				skipTablesList[i] = strings.TrimSpace(skipTablesList[i])
+			}
+		}
+
 		// execute query
-		insertStmts, err := getInsertsStmts(ctx, db, dbname)
+		insertStmts, err := getInsertsStmts(ctx, db, dbname, skipTablesList)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -64,7 +76,7 @@ var rootCmd = &cobra.Command{
 			fmt.Print(str)
 		}
 
-		selectStmts, err := getSelectsStmts(ctx, db, dbname)
+		selectStmts, err := getSelectsStmts(ctx, db, dbname, skipTablesList)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -125,8 +137,25 @@ ORDER BY
     table_name;
 `
 
-func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, generateMysqlInserts, database)
+func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
+	query := generateMysqlInserts
+	args := []interface{}{database}
+	
+	if len(skipTables) > 0 {
+		// Build the query with skip tables filter
+		placeholders := make([]string, len(skipTables))
+		for i := range skipTables {
+			placeholders[i] = "?"
+			args = append(args, skipTables[i])
+		}
+		skipCondition := fmt.Sprintf("AND c.TABLE_NAME NOT IN (%s)", strings.Join(placeholders, ", "))
+		
+		// Insert the skip condition into the query
+		query = strings.Replace(query, "        AND c.EXTRA NOT LIKE '%auto_increment%' -- except AUTO_INCREMENT columns", 
+			fmt.Sprintf("        AND c.EXTRA NOT LIKE '%%auto_increment%%' -- except AUTO_INCREMENT columns\n        %s", skipCondition), 1)
+	}
+	
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +210,25 @@ ORDER BY
     table_name;
 `
 
-func getSelectsStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, generateMysqlSelects, database)
+func getSelectsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
+	query := generateMysqlSelects
+	args := []interface{}{database}
+	
+	if len(skipTables) > 0 {
+		// Build the query with skip tables filter
+		placeholders := make([]string, len(skipTables))
+		for i := range skipTables {
+			placeholders[i] = "?"
+			args = append(args, skipTables[i])
+		}
+		skipCondition := fmt.Sprintf("AND c.TABLE_NAME NOT IN (%s)", strings.Join(placeholders, ", "))
+		
+		// Insert the skip condition into the query - add it after the schema condition
+		query = strings.Replace(query, "    WHERE\n        c.TABLE_SCHEMA = ? -- schema/database name", 
+			fmt.Sprintf("    WHERE\n        c.TABLE_SCHEMA = ? -- schema/database name\n        %s", skipCondition), 1)
+	}
+	
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

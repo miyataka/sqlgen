@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -14,13 +15,15 @@ import (
 )
 
 var (
-	dsn  string
-	sqlc bool
+	dsn        string
+	sqlc       bool
+	skipTables string
 )
 
 func main() {
 	rootCmd.Flags().StringVarP(&dsn, "dsn", "d", "", "DSN e.g. postgres://user:password@localhost:5432/test")
 	rootCmd.Flags().BoolVar(&sqlc, "sqlc", false, "generate comment for sqlc")
+	rootCmd.Flags().StringVar(&skipTables, "skip-tables", "", "comma-separated list of tables to skip")
 	err := rootCmd.MarkFlagRequired("dsn")
 	if err != nil {
 		log.Fatal(err)
@@ -47,8 +50,17 @@ var rootCmd = &cobra.Command{
 		}
 		defer db.Close()
 
+		// Parse skip tables
+		var skipTablesList []string
+		if skipTables != "" {
+			skipTablesList = strings.Split(skipTables, ",")
+			for i := range skipTablesList {
+				skipTablesList[i] = strings.TrimSpace(skipTablesList[i])
+			}
+		}
+
 		// execute query
-		insertStmts, err := getInsertsStmts(ctx, db, database)
+		insertStmts, err := getInsertsStmts(ctx, db, database, skipTablesList)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -64,7 +76,7 @@ var rootCmd = &cobra.Command{
 			fmt.Print(str)
 		}
 
-		selectStmts, err := getSelectByPkStmts(ctx, db, database)
+		selectStmts, err := getSelectByPkStmts(ctx, db, database, skipTablesList)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,8 +120,25 @@ ORDER BY
     table_name;
 `
 
-func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, generatePostgresInserts, database)
+func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
+	query := generatePostgresInserts
+	args := []interface{}{database}
+	
+	if len(skipTables) > 0 {
+		// Build the query with skip tables filter
+		placeholders := make([]string, len(skipTables))
+		for i := range skipTables {
+			placeholders[i] = fmt.Sprintf("$%d", i+2)
+			args = append(args, skipTables[i])
+		}
+		skipCondition := fmt.Sprintf("AND c.table_name NOT IN (%s)", strings.Join(placeholders, ", "))
+		
+		// Insert the skip condition into the query
+		query = strings.Replace(query, "        AND (c.column_default IS NULL OR NOT c.column_default LIKE 'nextval(%'::text ) -- sequenceを除外", 
+			fmt.Sprintf("        AND (c.column_default IS NULL OR NOT c.column_default LIKE 'nextval(%%'::text ) -- sequenceを除外\n        %s", skipCondition), 1)
+	}
+	
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +158,25 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string) ([]string
 	return insertStatements, nil
 }
 
-func getSelectByPkStmts(ctx context.Context, db *sql.DB, database string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, generatePostgresSelectByPk, database)
+func getSelectByPkStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
+	query := generatePostgresSelectByPk
+	args := []interface{}{database}
+	
+	if len(skipTables) > 0 {
+		// Build the query with skip tables filter
+		placeholders := make([]string, len(skipTables))
+		for i := range skipTables {
+			placeholders[i] = fmt.Sprintf("$%d", i+2)
+			args = append(args, skipTables[i])
+		}
+		skipCondition := fmt.Sprintf("AND c.table_name NOT IN (%s)", strings.Join(placeholders, ", "))
+		
+		// Insert the skip condition into the query - add it after the schema condition in column_list CTE
+		query = strings.Replace(query, "        c.table_schema = $1 -- schema name", 
+			fmt.Sprintf("        c.table_schema = $1 -- schema name\n        %s", skipCondition), 1)
+	}
+	
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
