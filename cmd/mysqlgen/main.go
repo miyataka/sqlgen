@@ -140,7 +140,7 @@ ORDER BY
 func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
 	query := generateMysqlInserts
 	args := []interface{}{database}
-	
+
 	if len(skipTables) > 0 {
 		// Build the query with skip tables filter
 		placeholders := make([]string, len(skipTables))
@@ -149,12 +149,12 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTable
 			args = append(args, skipTables[i])
 		}
 		skipCondition := fmt.Sprintf("AND c.TABLE_NAME NOT IN (%s)", strings.Join(placeholders, ", "))
-		
+
 		// Insert the skip condition into the query
-		query = strings.Replace(query, "        AND c.EXTRA NOT LIKE '%auto_increment%' -- except AUTO_INCREMENT columns", 
+		query = strings.Replace(query, "        AND c.EXTRA NOT LIKE '%auto_increment%' -- except AUTO_INCREMENT columns",
 			fmt.Sprintf("        AND c.EXTRA NOT LIKE '%%auto_increment%%' -- except AUTO_INCREMENT columns\n        %s", skipCondition), 1)
 	}
-	
+
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ ORDER BY
 func getSelectsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
 	query := generateMysqlSelects
 	args := []interface{}{database}
-	
+
 	if len(skipTables) > 0 {
 		// Build the query with skip tables filter
 		placeholders := make([]string, len(skipTables))
@@ -222,12 +222,12 @@ func getSelectsStmts(ctx context.Context, db *sql.DB, database string, skipTable
 			args = append(args, skipTables[i])
 		}
 		skipCondition := fmt.Sprintf("AND c.TABLE_NAME NOT IN (%s)", strings.Join(placeholders, ", "))
-		
+
 		// Insert the skip condition into the query - add it after the schema condition
-		query = strings.Replace(query, "    WHERE\n        c.TABLE_SCHEMA = ? -- schema/database name", 
+		query = strings.Replace(query, "    WHERE\n        c.TABLE_SCHEMA = ? -- schema/database name",
 			fmt.Sprintf("    WHERE\n        c.TABLE_SCHEMA = ? -- schema/database name\n        %s", skipCondition), 1)
 	}
-	
+
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err

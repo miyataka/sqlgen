@@ -123,7 +123,7 @@ ORDER BY
 func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
 	query := generatePostgresInserts
 	args := []interface{}{database}
-	
+
 	if len(skipTables) > 0 {
 		// Build the query with skip tables filter
 		placeholders := make([]string, len(skipTables))
@@ -132,12 +132,12 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTable
 			args = append(args, skipTables[i])
 		}
 		skipCondition := fmt.Sprintf("AND c.table_name NOT IN (%s)", strings.Join(placeholders, ", "))
-		
+
 		// Insert the skip condition into the query
-		query = strings.Replace(query, "        AND (c.column_default IS NULL OR NOT c.column_default LIKE 'nextval(%'::text ) -- sequenceを除外", 
+		query = strings.Replace(query, "        AND (c.column_default IS NULL OR NOT c.column_default LIKE 'nextval(%'::text ) -- sequenceを除外",
 			fmt.Sprintf("        AND (c.column_default IS NULL OR NOT c.column_default LIKE 'nextval(%%'::text ) -- sequenceを除外\n        %s", skipCondition), 1)
 	}
-	
+
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func getInsertsStmts(ctx context.Context, db *sql.DB, database string, skipTable
 func getSelectByPkStmts(ctx context.Context, db *sql.DB, database string, skipTables []string) ([]string, error) {
 	query := generatePostgresSelectByPk
 	args := []interface{}{database}
-	
+
 	if len(skipTables) > 0 {
 		// Build the query with skip tables filter
 		placeholders := make([]string, len(skipTables))
@@ -170,12 +170,12 @@ func getSelectByPkStmts(ctx context.Context, db *sql.DB, database string, skipTa
 			args = append(args, skipTables[i])
 		}
 		skipCondition := fmt.Sprintf("AND c.table_name NOT IN (%s)", strings.Join(placeholders, ", "))
-		
+
 		// Insert the skip condition into the query - add it after the schema condition in column_list CTE
-		query = strings.Replace(query, "        c.table_schema = $1 -- schema name", 
+		query = strings.Replace(query, "        c.table_schema = $1 -- schema name",
 			fmt.Sprintf("        c.table_schema = $1 -- schema name\n        %s", skipCondition), 1)
 	}
-	
+
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
