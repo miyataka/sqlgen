@@ -41,6 +41,24 @@ psqlgen --dsn="postgres://user:password@localhost:5432/dbname" --sqlc
 mysqlgen --dsn= "user:password@tcp(localhost:3306)/dbname" --sqlc
 ```
 
+### Skipping Tables
+
+You can skip specific tables from SQL generation using the `--skip-tables` flag:
+
+```sh
+# Skip a single table
+psqlgen --dsn="postgres://user:password@localhost:5432/dbname" --skip-tables=migrations
+
+# Skip multiple tables (comma-separated)
+psqlgen --dsn="postgres://user:password@localhost:5432/dbname" --skip-tables=migrations,logs,temp_data
+
+# MySQL example with skip tables
+mysqlgen --dsn="user:password@tcp(localhost:3306)/dbname" --skip-tables=migrations,logs
+
+# Combine with sqlc flag
+psqlgen --dsn="postgres://user:password@localhost:5432/dbname" --sqlc --skip-tables=migrations,logs
+```
+
 ## Contributing
 
 We welcome contributions to SQLGen! If you have any ideas, suggestions, or bug reports, please open an issue or submit a pull request on GitHub.
