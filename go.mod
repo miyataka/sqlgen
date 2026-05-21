@@ -1,10 +1,10 @@
 module github.com/miyataka/sqlgen
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/go-sql-driver/mysql v1.8.1
-	github.com/jackc/pgx/v5 v5.7.5
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jinzhu/inflection v1.0.0
 	github.com/spf13/cobra v1.9.1
 	github.com/testcontainers/testcontainers-go v0.38.0
@@ -60,7 +60,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
